@@ -690,13 +690,10 @@ ${exploreRefinementExamples &&
           'INSERT INTO ${explore_assistant_logging.SQL_TABLE_NAME} (user, model, explore, question, explore_url, timestamp) VALUES (?, ?, ?, ?, ?, ?)'
         const values = [
           me.id!,
-          model.replaceAll('_', ' '),
-          explore.replaceAll('_', ' '),
-          JSON.stringify(question),
-          JSON.stringify(responseJSON)
-            .replaceAll('_', ' ')
-            .replaceAll('"', "'")
-            .replaceAll(',', ' '),
+          model.replace(/'/g, "\\'"),
+          explore.replace(/'/g, "\\'"),
+          JSON.stringify(question).replace(/'/g, "\\'"),
+          JSON.stringify(responseJSON).replace(/'/g, "\\'"),
           (Date.now() / 1000).toString(),
         ]
         const sql_query = await core40SDK.ok(
