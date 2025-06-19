@@ -687,7 +687,7 @@ ${exploreRefinementExamples &&
       try {
 
         const sql =
-          'INSERT INTO ${explore_assistant_logging.SQL_TABLE_NAME (user, model, explore, question, explore_url, timestamp) VALUES (?, ?, ?, ?, ?, ?)'
+          'INSERT INTO ${explore_assistant_logging.SQL_TABLE_NAME} (user, model, explore, question, explore_url, timestamp) VALUES (?, ?, ?, ?, ?, ?)'
         const values = [
           me.id!,
           model.replaceAll('_', ' '),
