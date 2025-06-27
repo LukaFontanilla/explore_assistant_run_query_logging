@@ -7,6 +7,7 @@ import {
   SemanticModel,
   setIsSemanticModelLoaded,
   setSemanticModels,
+  setCurrenExplore,
 } from '../slices/assistantSlice'
 import { RootState } from '../store'
 
@@ -14,6 +15,7 @@ export const useLookerFields = () => {
   const {
     examples: { exploreSamples },
     isSemanticModelLoaded,
+    currentExplore,
   } = useSelector((state: RootState) => state.assistant as AssistantState)
 
   const supportedExplores = Object.keys(exploreSamples)
@@ -122,6 +124,24 @@ export const useLookerFields = () => {
 
         dispatch(setSemanticModels(semanticModels))
         dispatch(setIsSemanticModelLoaded(true))
+        
+        // Update currentExplore to the first available explore from semantic models
+        const availableExploreKeys = Object.keys(semanticModels)
+        if (availableExploreKeys.length > 0) {
+          // Check if current explore is still available
+          const currentExploreKey = currentExplore?.exploreKey
+          
+          // Only update if current explore is not available or not set
+          if (!currentExploreKey || !semanticModels[currentExploreKey]) {
+            const firstExploreKey = availableExploreKeys[0]
+            const firstSemanticModel = semanticModels[firstExploreKey]
+            dispatch(setCurrenExplore({
+              exploreKey: firstExploreKey,
+              modelName: firstSemanticModel.modelName,
+              exploreId: firstSemanticModel.exploreId,
+            }))
+          }
+        }
       } catch (error) {
         showBoundary({
           message: 'Failed to load semantic models',
