@@ -2,6 +2,7 @@ import React, { useCallback, useEffect, useRef, useState } from 'react'
 import PromptInput from './PromptInput'
 import Sidebar from './Sidebar'
 import { v4 as uuidv4 } from 'uuid'
+import { useLookerFields } from '../../hooks/useLookerFields'
 
 import './style.css'
 import SamplePrompts from '../../components/SamplePrompts'
@@ -68,12 +69,13 @@ const AgentPage = () => {
     isSemanticModelLoaded,
   } = useSelector((state: RootState) => state.assistant as AssistantState)
 
-  const explores = Object.keys(examples.exploreSamples).map((key) => {
-    const exploreParts = key.split(':')
+  // Get explores from semanticModels instead of examples.exploreSamples
+  const explores = Object.keys(semanticModels).map((exploreKey) => {
+    const semanticModel = semanticModels[exploreKey]
     return {
-      exploreKey: key,
-      modelName: exploreParts[0],
-      exploreId: exploreParts[1],
+      exploreKey: exploreKey,
+      modelName: semanticModel.modelName,
+      exploreId: semanticModel.exploreId,
     }
   })
 

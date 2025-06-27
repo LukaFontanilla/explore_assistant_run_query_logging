@@ -1,4 +1,6 @@
+import { ExtensionContext } from '@looker/extension-sdk-react'
 import { useContext, useEffect, useRef } from 'react'
+import { useErrorBoundary } from 'react-error-boundary'
 import { useDispatch, useSelector } from 'react-redux'
 import {
   AssistantState,
@@ -7,8 +9,6 @@ import {
   setSemanticModels,
 } from '../slices/assistantSlice'
 import { RootState } from '../store'
-import { ExtensionContext } from '@looker/extension-sdk-react'
-import { useErrorBoundary } from 'react-error-boundary'
 
 export const useLookerFields = () => {
   const {
@@ -35,7 +35,7 @@ export const useLookerFields = () => {
     if (supportedExplores.length === 0 || isSemanticModelLoaded) {
       return
     }
-    
+
     // mark
     hasFetched.current = true
 
@@ -94,9 +94,10 @@ export const useLookerFields = () => {
           measures,
         }
       } catch (error) {
-        showBoundary({
-          message: `Failed to fetch semantic model for ${modelName}::${exploreId}`,
-        })
+        console.error(error)
+        // showBoundary({
+        //   message: `Failed to fetch semantic model for ${modelName}::${exploreId}`,
+        // })
         return undefined
       }
     }
@@ -106,7 +107,7 @@ export const useLookerFields = () => {
         const fetchPromises = supportedExplores.map((exploreKey) => {
           const [modelName, exploreId] = exploreKey.split(':')
           return fetchSemanticModel(modelName, exploreId, exploreKey).then(
-            (model) => ({ exploreKey, model })
+            (model) => ({ exploreKey, model }),
           )
         })
 
