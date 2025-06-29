@@ -364,28 +364,37 @@ const AgentPage = () => {
               </div>
 
               <div className="flex flex-col max-w-3xl m-auto mt-16">
-                {explores.length > 1 && (
+                {explores.length > 0 ? (
+                  <>
+                    <div className="text-md border-b-2 p-2 max-w-3xl">
+                      <FormControl className="">
+                        <InputLabel>Explore</InputLabel>
+                        <Select
+                          value={currentExplore.exploreKey}
+                          label="Explore"
+                          onChange={handleExploreChange}
+                        >
+                          {explores.map((oneExplore) => (
+                            <MenuItem
+                              key={oneExplore.exploreKey}
+                              value={oneExplore.exploreKey}
+                            >
+                              {toCamelCase(oneExplore.exploreId)}
+                            </MenuItem>
+                          ))}
+                        </Select>
+                      </FormControl>
+                    </div>
+                    <SamplePrompts />
+                  </>
+                ) : (
                   <div className="text-md border-b-2 p-2 max-w-3xl">
-                    <FormControl className="">
-                      <InputLabel>Explore</InputLabel>
-                      <Select
-                        value={currentExplore.exploreKey}
-                        label="Explore"
-                        onChange={handleExploreChange}
-                      >
-                        {explores.map((oneExplore) => (
-                          <MenuItem
-                            key={oneExplore.exploreKey}
-                            value={oneExplore.exploreKey}
-                          >
-                            {toCamelCase(oneExplore.exploreId)}
-                          </MenuItem>
-                        ))}
-                      </Select>
-                    </FormControl>
+                    <h1 className="text-2xl font-bold">No explores found</h1>
+                    <p className="text-gray-500">
+                      Please reach out to your Looker team to use the assistant.
+                    </p>
                   </div>
                 )}
-                <SamplePrompts />
               </div>
 
               <div
