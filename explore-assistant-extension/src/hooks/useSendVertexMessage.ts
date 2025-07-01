@@ -686,23 +686,24 @@ ${exploreRefinementExamples &&
       console.log("Model: ", model)
       try {
 
+        const sql =
+          'INSERT INTO ${explore_assistant_logging.SQL_TABLE_NAME} (user, model, explore, question, explore_url, timestamp) VALUES (?, ?, ?, ?, ?, ?)'
+        const values = [
+          me.id!,
+          model.replace(/'/g, "\\'"),
+          explore.replace(/'/g, "\\'"),
+          JSON.stringify(question).replace(/'/g, "\\'"),
+          JSON.stringify(responseJSON).replace(/'/g, "\\'"),
+          (Date.now() / 1000).toString(),
+        ]
+        const sql_query = await core40SDK.ok(
+          core40SDK.create_sql_query({
+            sql: `EXECUTE IMMEDIATE "${sql}" USING '${values.join("','")}'`,
+            model_name: modelName || 'explore_assistant',
+          }),
+        )
         core40SDK.ok(
-          core40SDK.run_inline_query({
-            result_format: 'json',
-            body: {
-              model: modelName || "explore_assistant",
-              view: "explore_assistant_logging",
-              fields:['explore_assistant_logging.col'],
-              filters: {
-                "explore_assistant_logging.user" : me.id ?? '',
-                "explore_assistant_logging.model" : model.replaceAll("_"," ") ?? '',
-                "explore_assistant_logging.explore" : explore.replaceAll("_"," ") ?? '',
-                "explore_assistant_logging.question" : JSON.stringify(question),
-                "explore_assistant_logging.explore_url" : JSON.stringify(responseJSON).replaceAll("_"," ").replaceAll('"',"'").replaceAll(","," "),
-                "explore_assistant_logging.timestamp" : (Date.now() / 1000).toString()
-              }
-            }
-          })
+          core40SDK.run_sql_query(sql_query.slug!, 'json'),
         )
 
         return responseJSON
