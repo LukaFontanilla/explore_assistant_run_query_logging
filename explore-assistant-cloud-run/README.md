@@ -45,7 +45,7 @@ To set up and run the function locally, follow these steps:
 3. Run the function locally by executing the main script:
 
     ```bash
-    PROJECT=XXXX LOCATION=us-central-1 VERTEX_CF_AUTH_TOKEN=$(cat ../.vertex_cf_auth_token) python main.py
+    PROJECT=XXXX LOCATION=us-central-1 python main.py
     ```
 
 4. Test calling the endpoint locally with a custom query and parameter declaration
@@ -63,7 +63,7 @@ By default, the cloud function will use a default model. However, you may want t
 In development, you can run the main script with a new MODEL_NAME variable:
 
 ```bash
-PROJECT=XXXX LOCATION=us-central-1 VERTEX_CF_AUTH_TOKEN=$(cat ../.vertex_cf_auth_token) MODEL_NAME=XXXXX python main.py
+PROJECT=XXXX LOCATION=us-central-1 MODEL_NAME=XXXXX python main.py
 ```
 
 In production, on the cloud function, you can manually set a variable in the GCP UI. Updating the variable will re-deploy the cloud function.

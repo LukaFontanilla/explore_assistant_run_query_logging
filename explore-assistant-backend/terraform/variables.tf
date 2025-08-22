@@ -1,4 +1,3 @@
-
 #
 # REQUIRED VARIABLES
 #
@@ -8,7 +7,7 @@ variable "project_id" {
   description = "GCP Project ID"
 }
 
-variable "use_cloud_function_backend" {
+variable "use_cloud_run_backend" {
   type = bool
   default = false
 }
@@ -33,6 +32,11 @@ variable "cloud_run_service_name" {
     default = "explore-assistant-api"
 }
 
+variable "model_name" {
+  type    = string
+  default = "gemini-2.5-flash-lite"
+}
+
 #
 # BIGQUERY VARIABLES
 # 
@@ -41,4 +45,3 @@ variable "dataset_id_name" {
     type = string
     default = "explore_assistant"
 }
-
