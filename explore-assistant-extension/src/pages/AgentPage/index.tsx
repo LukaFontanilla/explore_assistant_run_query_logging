@@ -2,6 +2,7 @@ import React, { useCallback, useEffect, useRef, useState } from 'react'
 import PromptInput from './PromptInput'
 import Sidebar from './Sidebar'
 import { v4 as uuidv4 } from 'uuid'
+import { useLookerFields } from '../../hooks/useLookerFields'
 
 import './style.css'
 import SamplePrompts from '../../components/SamplePrompts'
@@ -68,12 +69,13 @@ const AgentPage = () => {
     isSemanticModelLoaded,
   } = useSelector((state: RootState) => state.assistant as AssistantState)
 
-  const explores = Object.keys(examples.exploreSamples).map((key) => {
-    const exploreParts = key.split(':')
+  // Get explores from semanticModels instead of examples.exploreSamples
+  const explores = Object.keys(semanticModels).map((exploreKey) => {
+    const semanticModel = semanticModels[exploreKey]
     return {
-      exploreKey: key,
-      modelName: exploreParts[0],
-      exploreId: exploreParts[1],
+      exploreKey: exploreKey,
+      modelName: semanticModel.modelName,
+      exploreId: semanticModel.exploreId,
     }
   })
 
@@ -362,28 +364,37 @@ const AgentPage = () => {
               </div>
 
               <div className="flex flex-col max-w-3xl m-auto mt-16">
-                {explores.length > 1 && (
+                {explores.length > 0 ? (
+                  <>
+                    <div className="text-md border-b-2 p-2 max-w-3xl">
+                      <FormControl className="">
+                        <InputLabel>Explore</InputLabel>
+                        <Select
+                          value={currentExplore.exploreKey}
+                          label="Explore"
+                          onChange={handleExploreChange}
+                        >
+                          {explores.map((oneExplore) => (
+                            <MenuItem
+                              key={oneExplore.exploreKey}
+                              value={oneExplore.exploreKey}
+                            >
+                              {toCamelCase(oneExplore.exploreId)}
+                            </MenuItem>
+                          ))}
+                        </Select>
+                      </FormControl>
+                    </div>
+                    <SamplePrompts />
+                  </>
+                ) : (
                   <div className="text-md border-b-2 p-2 max-w-3xl">
-                    <FormControl className="">
-                      <InputLabel>Explore</InputLabel>
-                      <Select
-                        value={currentExplore.exploreKey}
-                        label="Explore"
-                        onChange={handleExploreChange}
-                      >
-                        {explores.map((oneExplore) => (
-                          <MenuItem
-                            key={oneExplore.exploreKey}
-                            value={oneExplore.exploreKey}
-                          >
-                            {toCamelCase(oneExplore.exploreId)}
-                          </MenuItem>
-                        ))}
-                      </Select>
-                    </FormControl>
+                    <h1 className="text-2xl font-bold">No explores found</h1>
+                    <p className="text-gray-500">
+                      Please reach out to your Looker team to use the assistant.
+                    </p>
                   </div>
                 )}
-                <SamplePrompts />
               </div>
 
               <div

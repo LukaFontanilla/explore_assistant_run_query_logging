@@ -1,19 +1,21 @@
+import { ExtensionContext } from '@looker/extension-sdk-react'
 import { useContext, useEffect, useRef } from 'react'
+import { useErrorBoundary } from 'react-error-boundary'
 import { useDispatch, useSelector } from 'react-redux'
 import {
   AssistantState,
   SemanticModel,
   setIsSemanticModelLoaded,
   setSemanticModels,
+  setCurrenExplore,
 } from '../slices/assistantSlice'
 import { RootState } from '../store'
-import { ExtensionContext } from '@looker/extension-sdk-react'
-import { useErrorBoundary } from 'react-error-boundary'
 
 export const useLookerFields = () => {
   const {
     examples: { exploreSamples },
     isSemanticModelLoaded,
+    currentExplore,
   } = useSelector((state: RootState) => state.assistant as AssistantState)
 
   const supportedExplores = Object.keys(exploreSamples)
@@ -35,7 +37,7 @@ export const useLookerFields = () => {
     if (supportedExplores.length === 0 || isSemanticModelLoaded) {
       return
     }
-    
+
     // mark
     hasFetched.current = true
 
@@ -94,9 +96,10 @@ export const useLookerFields = () => {
           measures,
         }
       } catch (error) {
-        showBoundary({
-          message: `Failed to fetch semantic model for ${modelName}::${exploreId}`,
-        })
+        console.error(error)
+        // showBoundary({
+        //   message: `Failed to fetch semantic model for ${modelName}::${exploreId}`,
+        // })
         return undefined
       }
     }
@@ -106,7 +109,7 @@ export const useLookerFields = () => {
         const fetchPromises = supportedExplores.map((exploreKey) => {
           const [modelName, exploreId] = exploreKey.split(':')
           return fetchSemanticModel(modelName, exploreId, exploreKey).then(
-            (model) => ({ exploreKey, model })
+            (model) => ({ exploreKey, model }),
           )
         })
 
@@ -121,6 +124,24 @@ export const useLookerFields = () => {
 
         dispatch(setSemanticModels(semanticModels))
         dispatch(setIsSemanticModelLoaded(true))
+        
+        // Update currentExplore to the first available explore from semantic models
+        const availableExploreKeys = Object.keys(semanticModels)
+        if (availableExploreKeys.length > 0) {
+          // Check if current explore is still available
+          const currentExploreKey = currentExplore?.exploreKey
+          
+          // Only update if current explore is not available or not set
+          if (!currentExploreKey || !semanticModels[currentExploreKey]) {
+            const firstExploreKey = availableExploreKeys[0]
+            const firstSemanticModel = semanticModels[firstExploreKey]
+            dispatch(setCurrenExplore({
+              exploreKey: firstExploreKey,
+              modelName: firstSemanticModel.modelName,
+              exploreId: firstSemanticModel.exploreId,
+            }))
+          }
+        }
       } catch (error) {
         showBoundary({
           message: 'Failed to load semantic models',
