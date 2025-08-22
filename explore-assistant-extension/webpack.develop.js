@@ -30,7 +30,7 @@ module.exports = {
   ...commonConfig,
   output: {
     ...commonConfig.output,
-    publicPath: 'https://localhost:8080/',
+    publicPath: 'https://localhost:8089/',
   },
   mode: 'development',
   module: {

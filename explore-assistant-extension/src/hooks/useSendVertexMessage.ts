@@ -56,16 +56,12 @@ function formatRow(field: {
 const useSendVertexMessage = () => {
   const { showBoundary } = useErrorBoundary()
 
-  // cloud function
-  const VERTEX_AI_ENDPOINT = process.env.VERTEX_AI_ENDPOINT || ''
-  const VERTEX_CF_AUTH_TOKEN = process.env.VERTEX_CF_AUTH_TOKEN || ''
-
   // bigquery
   const VERTEX_BIGQUERY_LOOKER_CONNECTION_NAME =
     process.env.VERTEX_BIGQUERY_LOOKER_CONNECTION_NAME || ''
   const VERTEX_BIGQUERY_MODEL_ID = process.env.VERTEX_BIGQUERY_MODEL_ID || ''
 
-  const { core40SDK, lookerHostData } = useContext(ExtensionContext)
+  const { core40SDK, lookerHostData, extensionSDK } = useContext(ExtensionContext)
   const { settings, examples, currentExplore, query: question } = useSelector(
     (state: RootState) => state.assistant as AssistantState,
   )
@@ -83,7 +79,7 @@ const useSendVertexMessage = () => {
     try {     // Escape special characters
       const sanitizedContents = `"${contents
         .replace(/\\/g, '\\\\')
-        .replace(/"/g, '\\"')
+        .replace(/"/g, '\"')
         .replace(/\n/g, ' ') 
         .replace(/\r/g, ' ') 
         .replace(/\t/g, ' ') 
@@ -130,28 +126,30 @@ const useSendVertexMessage = () => {
       throw new Error('error')
     } 
   }
+  
 
   const vertexCloudFunction = async (
     contents: string,
     parameters: ModelParameters,
+    loggingData: any
   ) => {
     const body = JSON.stringify({
       contents: contents,
       parameters: parameters,
+      loggingData: loggingData
     })
 
-    const signature = CryptoJS.HmacSHA256(body, VERTEX_CF_AUTH_TOKEN).toString()
+    const VERTEX_AI_ENDPOINT = await extensionSDK.userAttributeGetItem('lukaaa_explore_assistant_explore_assistant_cloud_run_url') || process.env.VERTEX_AI_ENDPOINT || ''
 
-    const responseData = await fetch(VERTEX_AI_ENDPOINT, {
+    const responseData = await extensionSDK.serverProxy(VERTEX_AI_ENDPOINT, {
       method: 'POST',
       headers: {
         'Content-Type': 'application/json',
-        'X-Signature': signature,
       },
 
       body: body,
     })
-    const response = await responseData.text()
+    const response = await responseData.body
     return response.trim()
   }
 
@@ -171,12 +169,11 @@ ${exploreRefinementExamples &&
             const inputText = '"' + item.input.join('", "') + '"'
             return `- The sequence of prompts from the user: ${inputText}. The summarized prompts: "${item.output}"`
           })
-          .join('\n')
-        }
+          .join('')}
 
       Conversation so far
       ----------
-      input: ${promptList.map((prompt) => '"' + prompt + '"').join('\n')}
+      input: ${promptList.map((prompt) => '"' + prompt + '"').join('')}
     
       Task
       ----------
@@ -185,7 +182,7 @@ ${exploreRefinementExamples &&
       Only return the summary of the prompt with no extra explanatation or text
         
     `
-      const response = await sendMessage(contents, {})
+      const response = await sendMessage(contents, {}, undefined)
 
       return response
     },
@@ -255,13 +252,13 @@ ${exploreRefinementExamples &&
       Dimensions Used to group by information (follow the instructions in tags when using a specific field; if map used include a location or lat long dimension;):
       
       | Field Id | Field Type | LookML Type | Label | Description | Tags |
-      |------------|------------|-------------|-------|-------------|------|
+      |------------|-------------|-------|-------------|------|
       ${dimensions.map(formatRow).join('\n')}
                 
       Measures are used to perform calculations (if top, bottom, total, sum, etc. are used include a measure):
       
       | Field Id | Field Type | LookML Type | Label | Description | Tags |
-      |------------|------------|-------------|-------|-------------|------|
+      |------------|-------------|-------|-------------|------|
       ${measures.map(formatRow).join('\n')}
       # End LookML Metadata
     
@@ -272,7 +269,9 @@ ${exploreRefinementExamples &&
         ${exampleText}
       # End Examples
       
-  `}
+  `
+
+  }
 
   const isSummarizationPrompt = async (prompt: string) => {
     const contents = `
@@ -300,7 +299,7 @@ ${exploreRefinementExamples &&
       Return "data summary" if the user is asking for a data summary, and "refining question" if the user is continuing to refine their question. Only output one answer, no more. Only return one those two options. If you're not sure, return "refining question".
 
     `
-    const response = await sendMessage(contents, {})
+    const response = await sendMessage(contents, {}, undefined)
     return response === 'data summary'
   }
 
@@ -362,7 +361,7 @@ ${exploreRefinementExamples &&
       Summarize the data above
     
     `
-      const response = await sendMessage(contents, {})
+      const response = await sendMessage(contents, {}, undefined)
 
       const refinedContents = `
       The following text represents summaries of a given dashboard's data. 
@@ -371,7 +370,7 @@ ${exploreRefinementExamples &&
         Make this much more concise for a slide presentation using the following format. The summary should be a markdown documents that contains a list of sections, each section should have the following details:  a section title, which is the title for the given part of the summary, and key points which a list of key points for the concise summary. Data should be returned in each section, you will be penalized if it doesn't adhere to this format. Each summary should only be included once. Do not include the same summary twice.
         `
 
-      const refinedResponse = await sendMessage(refinedContents, {})
+      const refinedResponse = await sendMessage(refinedContents, {}, undefined)
       return refinedResponse
     },
     [currentExplore],
@@ -459,7 +458,7 @@ ${exploreRefinementExamples &&
     return lookerEncoding;
   };
   const generateFilterParams = useCallback(
-    async (prompt: string, sharedContext: string, dimensions: any[], measures: any[]) => {
+    async (prompt: string, sharedContext: string, dimensions: any[], measures: any[], loggingData: any) => {
       // get the filters
       const filterContents = `
       ${sharedContext}
@@ -474,52 +473,52 @@ ${exploreRefinementExamples &&
      
      Your job is to follow the steps below and generate a JSON object.
      
-     * Step 1: Your task is the look at the following data question that the user is asking and determine the filter expression for it. You should return a JSON list of filters to apply. Each element in the list will be a pair of the field id and the filter expression. Your output will look like \`[ { "field_id": "example_view.created_date", "filter_expression": "this year" } ]\`
+     * Step 1: Your task is the look at the following data question that the user is asking and determine the filter expression for it. You should return a JSON list of filters to apply. Each element in the list will be a pair of the field id and the filter expression. Your output will look like \`[ { \"field_id\": \"example_view.created_date\", \"filter_expression\": \"this year\" } ]\`
      * Step 2: verify that you're only using valid expressions for the filter values. If you do not know what the valid expressions are, refer to the table above. If you are still unsure, don't use the filter.
      * Step 3: verify that the field ids are indeed Field Ids from the table. If they are not, you should return an empty dictionary. There should be a period in the field id.
      `
 
-      const filterResponseInitial = await sendMessage(filterContents, {})
+      const filterResponseInitial = await sendMessage(filterContents, {}, undefined)
 
-      // // check the response
-      // const filterContentsCheck =
-      //   filterContents +
-      //   `
+      // check the response
+      const filterContentsCheck =
+        filterContents +
+        `
   
-      //      # Output
+           # Output
      
-      //      ${filterResponseInitial}
+           ${filterResponseInitial}
      
-      //      # Instructions
+           # Instructions
      
-      //      Verify the output, make changes and return the JSON
+           Verify the output, make changes and return the JSON
      
-      //      `
-      // const filterResponseCheck = await sendMessage(filterContentsCheck, {})
-      const filterResponseCheckJSON = parseJSONResponse(filterResponseInitial)
+           `
+      const filterResponseCheck = await sendMessage(filterContentsCheck, {}, undefined)
+      const filterResponseCheckJSON = parseJSONResponse(filterResponseCheck)
 
       // // Ensure filterResponseCheckJSON is an array
       const filterResponseArray = Array.isArray(filterResponseCheckJSON) ? filterResponseCheckJSON : [filterResponseCheckJSON]
       // // Iterate through each filter
       let filterResponseJSON: any = {}
 
-      filterResponseArray.forEach((filter: any) => {
-        filterResponseJSON = {...filterResponseJSON, ...filter.filters}
-      })
+      // filterResponseArray.forEach((filter: any) => {
+      //   filterResponseJSON = {...filterResponseJSON, ...filter}
+      // })
 
       // // Validate each filter
-      // filterResponseArray.forEach(function (filter: {
-      //   field_id: string
-      //   filter_expression: string
-      // }) {
-        // const field =
-        //   dimensions.find((d) => d.name === filter.field_id) ||
-        //   measures.find((m) => m.name === filter.field_id)
+      filterResponseArray.forEach(function (filter: {
+        field_id: string
+        filter_expression: string
+      }) {
+        const field =
+          dimensions.find((d) => d.name === filter.field_id) ||
+          measures.find((m) => m.name === filter.field_id)
 
-        // if (!field) {
-        //   console.log(`Invalid field: ${filter.field_id}`)
-        //   return
-        // }
+        if (!field) {
+          console.log(`Invalid field: ${filter.field_id}`)
+          return
+        }
 
         // const isValid = ExploreFilterValidator.isFilterValid(
         //   field.type as FieldType,
@@ -534,13 +533,13 @@ ${exploreRefinementExamples &&
         // }
 
         // Check if the field_id already exists in the hash
-      //   if (!filterResponseJSON[filter.field_id]) {
-      //     // If not, create an empty array for this field_id
-      //     filterResponseJSON[filter.field_id] = []
-      //   }
-      //   // Push the filter_expression into the array
-      //   filterResponseJSON[filter.field_id].push(filter.filter_expression)
-      // })
+        if (!filterResponseJSON[filter.field_id]) {
+          // If not, create an empty array for this field_id
+          filterResponseJSON[filter.field_id] = []
+        }
+        // Push the filter_expression into the array
+        filterResponseJSON[filter.field_id].push(filter.filter_expression)
+      })
 
       console.log('filterResponseInitial', filterResponseInitial)
       console.log('filterResponseCheckJSON', filterResponseCheckJSON)
@@ -591,7 +590,7 @@ ${exploreRefinementExamples &&
     const parameters = {
       max_output_tokens: 1000,
     }
-    const response = await sendMessage(contents, parameters)
+    const response = await sendMessage(contents, parameters, undefined)
     return parseJSONResponse(response)
   }
 
@@ -599,6 +598,7 @@ ${exploreRefinementExamples &&
     async (
       prompt: string,
       sharedContext,
+      loggingData: any
     ) => {
       const currentDateTime = new Date().toISOString()
 
@@ -608,16 +608,18 @@ ${exploreRefinementExamples &&
       Output
       ----------
       
-      Return a JSON that is compatible with the Looker API run_inline_query function as per the spec. Here is an example:
+      Return a JSON that is compatible with the Looker API run_inline_query function as per the spec. Here is an example: 
       
+      \`\`\`json
       {
         "model":"${currentExplore.modelName}",
         "view":"${currentExplore.exploreId}",
         "fields":["category.name","inventory_items.days_in_inventory_tier","products.count"],
         "filters":{"category.name":"socks"},
         "sorts":["products.count desc 0"],
-        "limit":"500",
+        "limit":"500"
       }
+      \`\`\`
       
       Instructions:
       - choose only the fields in the below lookml metadata
@@ -627,6 +629,7 @@ ${exploreRefinementExamples &&
       - try to avoid adding dynamic_fields, provide them when very similar example is found in the bottom
       - Always use the provided current date (${currentDateTime}) when generating Looker URL queries that involve TIMEFRAMES.
       - only respond with a JSON object
+      - If the user asks to filter by a field, don't also add it to the fields/SELECT list unless explicitly asked to
         
       User Request
       ----------
@@ -635,10 +638,10 @@ ${exploreRefinementExamples &&
       `
 
       const parameters = {
-        max_output_tokens: 1000,
+        // max_output_tokens: 1000,
       }
       console.log(contents)
-      const response = await sendMessage(contents, parameters)
+      const response = await sendMessage(contents, parameters, loggingData)
       const responseJSON = parseJSONResponse(response)
 
       return responseJSON
@@ -661,16 +664,26 @@ ${exploreRefinementExamples &&
         return
       }
       const sharedContext = generateSharedContext(dimensions, measures, exploreGenerationExamples) || ''
-      const filterContext = generateSharedContext(dimensions, measures, exploreGenerationExamples, true) || ''
-      const [filterResponseJSON, responseJSON] = await Promise.all([
-        generateFilterParams(prompt, filterContext, dimensions, measures),
-        generateBaseExploreParams(prompt, sharedContext)
-      ])
-      // const [responseJSON] = await Promise.all([
-      //   generateBaseExploreParams(prompt, sharedContext)
+      // const filterContext = generateSharedContext(dimensions, measures, exploreGenerationExamples, true) || ''
+      const me = await core40SDK.ok(core40SDK.me('id'))
+      const loggingData = {
+        user: me?.id ?? '',
+        model: model.replaceAll("_"," ") ?? '',
+        explore: explore.replaceAll("_"," ") ?? '',
+        question: question,
+        timestamp: (Date.now() / 1000).toString()
+      }
+
+      // const [filterResponseJSON, responseJSON] = await Promise.all([
+      //   generateFilterParams(prompt, filterContext, dimensions, measures, loggingData),
+      //   generateBaseExploreParams(prompt, sharedContext, loggingData)
       // ])
 
-      responseJSON['filters'] = filterResponseJSON
+      const [responseJSON] = await Promise.all([
+        generateBaseExploreParams(prompt, sharedContext, loggingData)
+      ])
+
+      // responseJSON['filters'] = filterResponseJSON
 
       // get the visualizations
       // const visualizationResponseJSON = await generateVisualizationParams(
@@ -682,40 +695,15 @@ ${exploreRefinementExamples &&
 
       // responseJSON['vis_config'] = visualizationResponseJSON
 
-      const me = await core40SDK.ok(core40SDK.me('id'))
-      console.log("Model: ", model)
-      try {
-
-        core40SDK.ok(
-          core40SDK.run_inline_query({
-            result_format: 'json',
-            body: {
-              model: modelName || "explore_assistant",
-              view: "explore_assistant_logging",
-              fields:['explore_assistant_logging.col'],
-              filters: {
-                "explore_assistant_logging.user" : me.id ?? '',
-                "explore_assistant_logging.model" : model.replaceAll("_"," ") ?? '',
-                "explore_assistant_logging.explore" : explore.replaceAll("_"," ") ?? '',
-                "explore_assistant_logging.question" : JSON.stringify(question),
-                "explore_assistant_logging.explore_url" : JSON.stringify(responseJSON).replaceAll("_"," ").replaceAll('"',"'").replaceAll(","," "),
-                "explore_assistant_logging.timestamp" : (Date.now() / 1000).toString()
-              }
-            }
-          })
-        )
-
-        return responseJSON
-        
-      } catch (error: any) {
-        return responseJSON
-      }
+      return responseJSON
     },
     [settings],
   )
 
-  const sendMessage = async (message: string, parameters: ModelParameters) => {
+  const sendMessage = async (message: string, parameters: ModelParameters, loggingData: any) => {
     const wrappedMessage = promptWrapper(message)
+    const VERTEX_AI_ENDPOINT = await extensionSDK.userAttributeGetItem('lukaaa_explore_assistant_explore_assistant_cloud_run_url') || process.env.VERTEX_AI_ENDPOINT
+
     try {
       if (
         VERTEX_AI_ENDPOINT &&
@@ -729,7 +717,7 @@ ${exploreRefinementExamples &&
 
       let response = ''
       if (VERTEX_AI_ENDPOINT) {
-        response = await vertexCloudFunction(wrappedMessage, parameters)
+        response = await vertexCloudFunction(wrappedMessage, parameters, loggingData)
       } else if (
         VERTEX_BIGQUERY_LOOKER_CONNECTION_NAME &&
         VERTEX_BIGQUERY_MODEL_ID

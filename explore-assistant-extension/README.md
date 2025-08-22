@@ -10,24 +10,20 @@ This section describes how to set up the LLM Integration for the Explore Assista
 1. Install a backend using terraform by [following the instructions](../explore-assistant-backend/README.md)
 
 2. Save the backend details for use by the extension framework:
-   
+
    * The BigQuery example dataset and table name
    * If you're using the BigQuery backend, the model id that allows communication with Gemini
-   * If you're using the Cloud Function backend, the url of the endpoint
+   * If you're using the Cloud Run backend, the URL of the private service will be passed to the extension through a user attribute.
 
-### Optional: Setup Log Sink to BQ for LLM Cost Estimation and Request Logging (used for Cloud Function Backend)
+### Optional: Setup Log Sink to BQ for LLM Cost Estimation and Request Logging
 
 Please see [Google Cloud's docs](https://cloud.google.com/logging/docs/export/configure_export_v2#creating_sink) on setting up a log sink to BQ, using the below filter for Explore Assistant Logs:
 
 ```
-(resource.type = "cloud_function"
-resource.labels.function_name = "Insert service name"
-resource.labels.region = "<Insert location>")
- OR 
-(resource.type = "cloud_run_revision"
+resource.type = "cloud_run_revision"
 resource.labels.service_name = "<Insert service name>"
-resource.labels.location = "<Insert location>")
- severity>=DEFAULT
+resource.labels.location = "<Insert location>"
+severity>=DEFAULT
 jsonPayload.component="explore-assistant-metadata"
 ```
 
@@ -73,13 +69,6 @@ jsonPayload.component="explore-assistant-metadata"
    BIGQUERY_EXAMPLE_PROMPTS_DATASET_NAME=<This is the dataset and/or project that contain the Example prompt data, assuming that differs from the dataset and/or project specified as default in the Looker connection above>
    ```
 
-   If you're using the Cloud Function backend, replace the defaults:
-
-   ```
-   VERTEX_AI_ENDPOINT=<This is your Deployed Cloud Function Endpoint>
-   VERTEX_CF_AUTH_TOKEN=<This is the token used to communicate with the cloud function>
-   ```
-
    If you're using the BigQuery Backend replace the default:
 
    ```
@@ -112,7 +101,6 @@ jsonPayload.component="explore-assistant-metadata"
    1. In your copy of the extension project you have a `manifest.lkml` file.
 
    You can either drag & upload this file into your Looker project, or create a `manifest.lkml` with the same content. Change the `id`, `label`, or `url` as needed. 
-   **IMPORTANT** please paste in the deployed Cloud Function URL into the `external_api_urls` list and uncomment that line if you are using the Cloud Function backend deployment. This will allowlist it in Looker for fetch requests.
 
    ```lookml
    application: explore_assistant {
@@ -120,14 +108,14 @@ jsonPayload.component="explore-assistant-metadata"
     url: "https://localhost:8080/bundle.js"
     # file: "bundle.js"
     entitlements: {
-      core_api_methods: ["lookml_model_explore","create_sql_query","run_sql_query","run_query","create_query"]
+      core_api_methods: ["lookml_model_explore","create_sql_query","run_inline_query","run_sql_query","run_query","create_query"]
       navigation: yes
       use_embeds: yes
       use_iframes: yes
       new_window: yes
+      scoped_user_attributes: ["explore_assistant_cloud_run_url"]
       new_window_external_urls: ["https://developers.generativeai.google/*"]
       local_storage: yes
-      # external_api_urls: ["cloud function url"]
     }
    }
    ```
