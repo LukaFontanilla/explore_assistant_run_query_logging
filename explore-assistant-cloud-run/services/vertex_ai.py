@@ -3,7 +3,7 @@ from fastapi import HTTPException
 from typing import List
 
 from auth.google_auth import get_auth_token
-from core.config import REGION, PROJECT, MODEL_NAME
+from core.config import REGION, PROJECT, MODEL_NAME, TEMPERATURE
 from schemas.query import Content
 
 # In-memory chat history store
@@ -18,7 +18,7 @@ def update_chat_history(user_id: str, chat_history: List[Content]):
 async def generate_looker_query(user_id: str, contents: str, parameters=None):
     # Define default parameters
     default_parameters = {
-        "temperature": 0.2,
+        "temperature": TEMPERATURE,
         "maxOutputTokens": 1200,
         "topP": 0.8,
         "topK": 1

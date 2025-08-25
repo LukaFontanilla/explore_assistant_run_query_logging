@@ -82,6 +82,7 @@ export PROJECT_ID=(PASTE GCP PROJECT ID HERE)
 export REGION=(PASTE DEPLOYMENT REGION HERE, e.g., us-central1)
 export SERVICE_NAME=explore-assistant-api
 export MODEL_NAME=gemini-2.5-flash-lite
+export TEMPERATURE=0.2
 export IMAGE_URL=$REGION-docker.pkg.dev/$PROJECT_ID/explore-assistant-repo/$SERVICE_NAME:latest
 export SERVICE_ACCOUNT="explore-assistant-cr-sa@$PROJECT_ID.iam.gserviceaccount.com"
 
@@ -98,9 +99,10 @@ gcloud run deploy $SERVICE_NAME \
   --region $REGION \
   --ingress internal \
   --service-account $SERVICE_ACCOUNT \
-  --set-env-vars="PROJECT=$PROJECT_ID,REGION=$REGION,MODEL_NAME=$MODEL_NAME" \
+  --set-env-vars="PROJECT=$PROJECT_ID,REGION=$REGION,MODEL_NAME=$MODEL_NAME,TEMPERATURE=$TEMPERATURE" \
   --project=$PROJECT_ID
 ```
+
 
 
 ### BigQuery Backend

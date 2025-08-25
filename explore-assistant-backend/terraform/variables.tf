@@ -37,6 +37,11 @@ variable "model_name" {
   default = "gemini-2.5-flash-lite"
 }
 
+variable "temperature" {
+  type    = number
+  default = 0.2
+}
+
 #
 # BIGQUERY VARIABLES
 # 

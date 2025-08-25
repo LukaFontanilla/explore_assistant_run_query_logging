@@ -14,6 +14,10 @@ variable "model_name" {
   type = string
 }
 
+variable "temperature" {
+  type = number
+}
+
 resource "google_service_account" "explore-assistant-sa" {
   account_id   = "explore-assistant-cr-sa"
   display_name = "Looker Explore Assistant Cloud Run SA"
@@ -55,6 +59,10 @@ resource "google_cloud_run_v2_service" "default" {
       env {
         name = "MODEL_NAME"
         value = var.model_name
+      }
+      env {
+        name = "TEMPERATURE"
+        value = var.temperature
       }
     }
   }
