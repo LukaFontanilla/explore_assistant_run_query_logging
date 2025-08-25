@@ -139,7 +139,7 @@ const useSendVertexMessage = () => {
       loggingData: loggingData
     })
 
-    const VERTEX_AI_ENDPOINT = await extensionSDK.userAttributeGetItem('lukaaa_explore_assistant_explore_assistant_cloud_run_url') || process.env.VERTEX_AI_ENDPOINT || ''
+    const VERTEX_AI_ENDPOINT = await extensionSDK.userAttributeGetItem('explore_assistant_cloud_run_url') || process.env.VERTEX_AI_ENDPOINT || ''
 
     const responseData = await extensionSDK.serverProxy(VERTEX_AI_ENDPOINT, {
       method: 'POST',
@@ -209,6 +209,7 @@ ${exploreRefinementExamples &&
       console.log("Line",exploreGenerationExamples)
       exampleText = exploreGenerationExamples.map((item) => `input: "${item.input}" ; output: ${JSON.stringify(parseLookerURL(item.output))}`).join('\n')
     }
+
     const filterDocs = filters ? `
         # Documentation
         Here is general documentation about filters. Make sure to always generate and apply the filter in the "filter" parameter and not "filter_expression":
@@ -216,8 +217,8 @@ ${exploreRefinementExamples &&
         Here is general documentation on how intervals and timeframes are applied in Looker
         ${looker_filters_interval_tf}   
     ` : ''
-    return `
-      ${filterDocs}
+
+    const queryDocs = !filters ? `
       Here is general documentation on Looker JSON fields and pivots
        ${looker_pivots_url_parameters_doc}
              
@@ -241,6 +242,11 @@ ${exploreRefinementExamples &&
       | vis_config         | object | Visualization configuration properties. These properties are typically opaque and differ based on the type of visualization used. There is no specified set of allowed keys. The values can be any type supported by JSON. A "type" key with a string value is often present, and is used by Looker to determine which visualization to present. Visualizations ignore unknown vis_config properties. |
       | filter_config      | object | The filter_config represents the state of the filter UI on the explore page for a given query. When running a query via the Looker UI, this parameter takes precedence over "filters". When creating a query or modifying an existing query, "filter_config" should be set to null. Setting it to any other value could cause unexpected filtering behavior. The format should be considered opaque. |
           
+    `: ''
+    return `
+      ${filterDocs}
+      
+      ${queryDocs}
       # End Documentation
       
            
@@ -477,7 +483,6 @@ ${exploreRefinementExamples &&
      * Step 2: verify that you're only using valid expressions for the filter values. If you do not know what the valid expressions are, refer to the table above. If you are still unsure, don't use the filter.
      * Step 3: verify that the field ids are indeed Field Ids from the table. If they are not, you should return an empty dictionary. There should be a period in the field id.
      `
-
       const filterResponseInitial = await sendMessage(filterContents, {}, undefined)
 
       // check the response
@@ -621,16 +626,22 @@ ${exploreRefinementExamples &&
       }
       \`\`\`
       
-      Instructions:
-      - choose only the fields in the below lookml metadata
-      - prioritize the field description, label, tags, and name for what field(s) to use for a given description
-      - generate only one answer, no more.
-      - use the Examples for guidance on how to structure the body
-      - try to avoid adding dynamic_fields, provide them when very similar example is found in the bottom
-      - Always use the provided current date (${currentDateTime}) when generating Looker URL queries that involve TIMEFRAMES.
-      - only respond with a JSON object
-      - If the user asks to filter by a field, don't also add it to the fields/SELECT list unless explicitly asked to
-        
+      **Instructions:**
+
+      1.  **Field Selection**:
+          * Choose fields **exclusively** from the provided LookML metadata.
+          * Prioritize the field's description, label, tags, and name to determine the most relevant field(s) for the user's request.
+
+      2.  **Output & Formatting**:
+          * Generate **only one** JSON object as the response. No additional text or conversational fillers.
+          * Use the provided examples as a guide for the structure and content of the JSON output.
+          * Do not add dynamic_fields unless there is a very similar example provided.
+
+      3.  **Specific Rules**:
+          * Always use the provided "${currentDateTime}" variable for any Looker URL queries that require a date or time frame filter.
+          * **Filtering Rule**: If a user asks to filter by a field (e.g., date, category), **do not** add that same field to the fields list of the Looker query. Only include the field in the fields list if the user explicitly asks for it to be part of the result set (e.g., "show me total sales **by year** for the last 2 years").
+          * **No Implicit Filters**: Never apply a filter to any field unless the user has **explicitly** requested it in their natural language query. For instance, do not automatically filter traffic_source for "any" or any other value if the user didn't ask for a traffic_source filter.
+   
       User Request
       ----------
       ${prompt}
@@ -664,7 +675,7 @@ ${exploreRefinementExamples &&
         return
       }
       const sharedContext = generateSharedContext(dimensions, measures, exploreGenerationExamples) || ''
-      // const filterContext = generateSharedContext(dimensions, measures, exploreGenerationExamples, true) || ''
+      const filterContext = generateSharedContext(dimensions, measures, exploreGenerationExamples, true) || ''
       const me = await core40SDK.ok(core40SDK.me('id'))
       const loggingData = {
         user: me?.id ?? '',
@@ -674,16 +685,16 @@ ${exploreRefinementExamples &&
         timestamp: (Date.now() / 1000).toString()
       }
 
-      // const [filterResponseJSON, responseJSON] = await Promise.all([
-      //   generateFilterParams(prompt, filterContext, dimensions, measures, loggingData),
-      //   generateBaseExploreParams(prompt, sharedContext, loggingData)
-      // ])
-
-      const [responseJSON] = await Promise.all([
+      const [filterResponseJSON, responseJSON] = await Promise.all([
+        generateFilterParams(prompt, filterContext, dimensions, measures, loggingData),
         generateBaseExploreParams(prompt, sharedContext, loggingData)
       ])
 
-      // responseJSON['filters'] = filterResponseJSON
+      // const [responseJSON] = await Promise.all([
+      //   generateBaseExploreParams(prompt, sharedContext, loggingData)
+      // ])
+
+      responseJSON['filters'] = filterResponseJSON
 
       // get the visualizations
       // const visualizationResponseJSON = await generateVisualizationParams(

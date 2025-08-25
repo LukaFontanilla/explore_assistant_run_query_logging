@@ -6,7 +6,8 @@ import {
   setExploreSamples,
   setisBigQueryMetadataLoaded,
   setCurrenExplore,
-  AssistantState
+  AssistantState,
+  setIsSemanticModelLoaded
 } from '../slices/assistantSlice'
 
 import { ExtensionContext } from '@looker/extension-sdk-react'
@@ -35,6 +36,8 @@ export const useBigQueryExamples = () => {
         })
       )
 
+      console.log(query)
+
       if (query === undefined) {
         return []
       }
@@ -52,6 +55,8 @@ export const useBigQueryExamples = () => {
   const getExamplesAndSamples = async () => {
     return runExampleQuery().then((response) => {
       if(response.length === 0 || !Array.isArray(response)) {
+        dispatch(setisBigQueryMetadataLoaded(true))
+        dispatch(setIsSemanticModelLoaded(true))
         return
       }
       const generationExamples: any = {
@@ -97,9 +102,6 @@ export const useBigQueryExamples = () => {
 
     dispatch(setisBigQueryMetadataLoaded(false))
     Promise.all([getExamplesAndSamples()])
-      .then(() => {
-        dispatch(setisBigQueryMetadataLoaded(true))
-      })
       .catch((error) => {
         showBoundary(error)
         dispatch(setisBigQueryMetadataLoaded(false))

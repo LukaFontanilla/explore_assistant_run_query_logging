@@ -401,7 +401,7 @@ const AgentPage = () => {
                 className={`fixed bottom-0 left-1/2 transform -translate-x-1/2 w-4/5 transition-all duration-300 ease-in-out
                             ${expanded ? 'pl-80' : ''} `}
               >
-                <PromptInput />
+                {explores.length > 0 ? <PromptInput /> : <></>}
               </div>
             </>
           )}

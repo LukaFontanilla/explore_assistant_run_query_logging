@@ -8,7 +8,7 @@
     "analyze": "export ANALYZE_MODE=static && npm run build",
     "build": "export BABEL_ENV=build && webpack --config webpack.prod.js",
     "clean": "rm -rf dist",
-    "start": "webpack serve --hot --server-type https  --port 8089 --config webpack.develop.js",
+    "start": "webpack serve --hot --server-type https  --port 8080 --config webpack.develop.js",
     "prebuild": "npm run clean",
     "test": "jest"
   },
