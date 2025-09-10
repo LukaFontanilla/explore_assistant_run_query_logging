@@ -145,6 +145,7 @@ const useSendVertexMessage = () => {
       method: 'POST',
       headers: {
         'Content-Type': 'application/json',
+        'Authorization': `Bearer ${extensionSDK.createSecretKeyTag('gcp_id_token')}`
       },
 
       body: body,
@@ -713,7 +714,7 @@ ${exploreRefinementExamples &&
 
   const sendMessage = async (message: string, parameters: ModelParameters, loggingData: any) => {
     const wrappedMessage = promptWrapper(message)
-    const VERTEX_AI_ENDPOINT = await extensionSDK.userAttributeGetItem('lukaaa_explore_assistant_explore_assistant_cloud_run_url') || process.env.VERTEX_AI_ENDPOINT
+    const VERTEX_AI_ENDPOINT = await extensionSDK.userAttributeGetItem('explore_assistant_cloud_run_url') || process.env.VERTEX_AI_ENDPOINT
 
     try {
       if (
